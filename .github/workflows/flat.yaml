@@ -1,0 +1,36 @@
+name: Fetch course guide data
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: '15 * * * *'
+
+jobs:
+  fetch:
+    name: Fetch course guide data
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out this repo
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - name: Install Python requirements
+        run: pip install -r requirements.txt
+      - name: Run scraper.py
+        run: python scraper.py
+      - name: Commit and push if changed
+        run: |-
+          git add ./course_data.csv
+          git config user.name "Automated"
+          git config user.email "actions@users.noreply.github.com"
+          timestamp=$(date -u)
+          git commit -m "Generate data files for ${timestamp}" || exit 0
+          git push
