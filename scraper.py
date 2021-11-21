@@ -15,6 +15,7 @@ GR_SUBJ = "https://www.lsa.umich.edu/cg/cg_subjectlist.aspx?termArray={}&cgtype=
     TERM
 )
 
+
 def get_departments():
     r = requests.get(UG_SUBJ)
     soup = BeautifulSoup(r.text, features="html.parser")
@@ -38,6 +39,7 @@ def get_departments():
     )
     deps = {"ug": ug_departments, "gr": gr_departments}
     return deps
+
 
 def get_courses(deps):
     course_sections = []
@@ -75,7 +77,8 @@ def get_courses(deps):
             for result in results:
                 # For each course listing, save the lecture course
                 parts = [
-                    a.strip() for a in result.select_one("font").text.strip().split("\r\n")
+                    a.strip()
+                    for a in result.select_one("font").text.strip().split("\r\n")
                 ]
                 dept = parts[0]
                 number = parts[1]
@@ -110,6 +113,7 @@ def get_courses(deps):
         filtered[c["dept"] + " " + c["number"]] = c["url"]
     return filtered
 
+
 def get_all_sections(items):
     # Get ALL of the sections
     all_sections = []
@@ -136,22 +140,31 @@ def get_all_sections(items):
     return all_sections
 
 
-
 bucket = "magnify.michigandaily.us"
 key = "data/course_data.csv"
 
 deps = get_departments()
 filtered = get_courses(deps)
 print(f"Crawling {len(filtered)} courses")
-all_sections = get_all_sections(list(filtered.items())[:1])
+all_sections = get_all_sections(filtered.items())
 df = pd.DataFrame(all_sections)
 
-s3 = boto3.client('s3')
-data = s3.get_object(Bucket=bucket, Key=key)
+s3 = boto3.client("s3")
 try:
-    old_data = pd.read_csv(data['Body'])
+    data = s3.get_object(Bucket=bucket, Key=key)
+    old_data = pd.read_csv(data["Body"])
     df = pd.concat([old_data, df])
 except s3.exceptions.NoSuchKey:
     print("No preexisting CSV")
 
 df.to_csv("./course_data.csv", index=False)
+s3.upload_file(
+    "./course_data.csv",
+    bucket,
+    key,
+    ExtraArgs={
+        "ContentType": "application/csv",
+        "ACL": "public-read",
+        "CacheControl": "max-age=3600",
+    },
+)
