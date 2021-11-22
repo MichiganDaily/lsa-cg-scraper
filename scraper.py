@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 import pandas as pd
 from datetime import datetime
+import os
 
 import boto3
 
@@ -14,6 +15,14 @@ UG_SUBJ = "https://www.lsa.umich.edu/cg/cg_subjectlist.aspx?termArray={}&cgtype=
 GR_SUBJ = "https://www.lsa.umich.edu/cg/cg_subjectlist.aspx?termArray={}&cgtype=gr&allsections=true".format(
     TERM
 )
+
+
+def slugify(text):
+    return "-".join(text.lower().split())
+
+
+def round_hour(time):
+    return time.replace(second=0, microsecond=0, minute=0)
 
 
 def get_departments():
@@ -157,6 +166,9 @@ try:
 except s3.exceptions.NoSuchKey:
     print("No preexisting CSV")
 
+df.Time = pd.to_datetime(df.Time)
+df["Hour"] = df.Time.apply(round_hour)
+
 df.to_csv("./course_data.csv", index=False)
 s3.upload_file(
     "./course_data.csv",
@@ -168,3 +180,73 @@ s3.upload_file(
         "CacheControl": "max-age=3600",
     },
 )
+
+hourly_counts = (
+    df[
+        df.Section.str.contains("LEC")
+        | df.Section.str.contains("SEM")
+        | df.Section.str.contains("REC")
+        | df.Section.str.contains("IND")
+    ]
+    .groupby(["Course", "Hour"])
+    .agg("sum")
+)
+
+capacity = hourly_counts.groupby(level=0)["Open Seats"].agg("max")
+available = hourly_counts.groupby(level=0)["Open Seats"].agg("last")
+percent_available = available / capacity
+coursename = pd.Series(df.Course.unique(), index=df.Course.unique())
+undergrad = coursename.apply(lambda x: int(x.split()[1]) < 500)
+classnum = coursename.apply(lambda x: int(x.split()[1]))
+stdabrd = coursename.str.contains("STDABRD")
+dept = coursename.apply(lambda x: x.split()[0])
+slug = coursename.apply(slugify)
+
+overview = pd.DataFrame({
+    "Capacity": capacity,
+    "Available": available,
+    "PercentAvailable": percent_available,
+    "Undergrad": undergrad,
+    "Dept": dept,
+    "CourseNum": classnum,
+    "StudyAbroad": stdabrd,
+})
+
+overview.dropna().to_csv("./overview.csv", index_label="Course", index=False)
+
+s3.upload_file(
+    "./overview.csv",
+    bucket,
+    "course_data/overview.csv",
+    ExtraArgs={
+        "ContentType": "application/csv",
+        "ACL": "public-read",
+        "CacheControl": "max-age=3600",
+    },
+)
+os.makedirs("./output/", exist_ok=True)
+for (course, listing) in df.groupby("Course").groups.items():
+    df.loc[
+        listing,
+        [
+            "Section",
+            "Instruction Mode",
+            "Class No",
+            "Enroll Stat",
+            "Open Seats",
+            "Wait List",
+            "Hour",
+        ],
+    ].to_csv(f"./output/{slugify(course)}.csv")
+
+for file in os.listdir("./output/"):
+    s3.upload_file(
+        f"./output/{file}",
+        bucket,
+        f"course_data/course/{file}",
+        ExtraArgs={
+            "ContentType": "application/csv",
+            "ACL": "public-read",
+            "CacheControl": "max-age=3600",
+        },
+    )
