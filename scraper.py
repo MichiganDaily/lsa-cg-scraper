@@ -168,6 +168,7 @@ except s3.exceptions.NoSuchKey:
 
 df.Time = pd.to_datetime(df.Time)
 df["Hour"] = df.Time.apply(round_hour)
+df["Open Seats"] = df["Open Seats"].astype(int)
 
 df.to_csv("./course_data.csv", index=False)
 s3.upload_file(
@@ -191,6 +192,7 @@ hourly_counts = (
     .groupby(["Course", "Hour"])
     .agg("sum")
 )
+
 
 capacity = hourly_counts.groupby(level=0)["Open Seats"].agg("max")
 available = hourly_counts.groupby(level=0)["Open Seats"].agg("last")
