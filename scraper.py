@@ -169,6 +169,7 @@ except s3.exceptions.NoSuchKey:
 df.Time = pd.to_datetime(df.Time)
 df["Hour"] = df.Time.apply(round_hour)
 df["Open Seats"] = df["Open Seats"].astype(int)
+df["Wait List"] = df["Wait List"].apply(lambda x: int(x) if x != "-" else -1)
 
 df.to_csv("./course_data.csv", index=False)
 s3.upload_file(
