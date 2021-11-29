@@ -196,6 +196,7 @@ hourly_counts = (
 
 capacity = hourly_counts.groupby(level=0)["Open Seats"].agg("max")
 available = hourly_counts.groupby(level=0)["Open Seats"].agg("last")
+waitlist = hourly_counts.groupby(level=0)["Wait List"].agg("last")
 percent_available = available / capacity
 coursename = pd.Series(df.Course.unique(), index=df.Course.unique())
 undergrad = coursename.apply(lambda x: int(x.split()[1]) < 500)
@@ -207,6 +208,7 @@ slug = coursename.apply(slugify)
 overview = pd.DataFrame({
     "Capacity": capacity,
     "Available": available,
+    "Waitlist": waitlist,
     "PercentAvailable": percent_available,
     "Undergrad": undergrad,
     "Dept": dept,
