@@ -141,6 +141,7 @@ def get_section(data):
         print(f"{name} might not exist. Will be skipped in this output.")
     return obj
 
+
 def get_all_sections(items):
     # Get ALL of the sections
     start = datetime.now()
@@ -168,7 +169,9 @@ if __name__ == "__main__":
     all_sections = get_all_sections(filtered.items())
     df = pd.DataFrame(all_sections)
 
-    s3 = boto3.client("s3")
+    session = boto3.Session(profile_name="cg-scraper")
+    s3 = session.client("s3")
+
     try:
         data = s3.get_object(Bucket=bucket, Key=key)
         old_data = pd.read_csv(data["Body"])
@@ -203,7 +206,6 @@ if __name__ == "__main__":
         .groupby(["Course", "Hour"])
         .agg("sum")
     )
-
 
     capacity = hourly_counts.groupby(level=0)["Open Seats"].agg("max")
     available = hourly_counts.groupby(level=0)["Open Seats"].agg("last")
