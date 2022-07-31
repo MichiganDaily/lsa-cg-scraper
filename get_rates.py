@@ -3,9 +3,7 @@ Use Angela's notebook code to calculate rates for all sections.
 """
 
 import pandas as pd
-import math
-import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from tqdm.contrib.concurrent import process_map
 
 

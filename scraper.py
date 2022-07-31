@@ -1,9 +1,7 @@
-import multiprocessing
 from tqdm.contrib.concurrent import process_map
 from pickle import dump, load
 import requests
 from bs4 import BeautifulSoup
-from tqdm import tqdm
 import pandas as pd
 from datetime import datetime, date
 import os
