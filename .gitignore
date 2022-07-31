@@ -1,5 +1,10 @@
 *.pem
 .ipynb_checkpoints/
 
+*.pkl
+output
+course_data.csv
+overview.csv
+
 .DS_Store
 venv
