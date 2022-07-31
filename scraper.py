@@ -27,28 +27,20 @@ def round_hour(time):
 
 
 def get_departments():
-    r = requests.get(UG_SUBJ)
-    soup = BeautifulSoup(r.text, features="html.parser")
-    ug_departments = set(
-        [
-            cell.text.strip()
-            for cell in soup.select_one(".table.table-striped.table-condensed").select(
-                "tr > td:nth-child(1)"
-            )
-        ]
-    )
-    r = requests.get(GR_SUBJ)
-    soup = BeautifulSoup(r.text, features="html.parser")
-    gr_departments = set(
-        [
-            cell.text.strip()
-            for cell in soup.select_one(".table.table-striped.table-condensed").select(
-                "tr > td:nth-child(1)"
-            )
-        ]
-    )
-    deps = {"ug": ug_departments, "gr": gr_departments}
-    return deps
+    def parse_departments(url):
+        r = requests.get(url)
+        soup = BeautifulSoup(r.text, features="html.parser")
+        departments = set(
+            [
+                cell.text.strip()
+                for cell in soup.select_one(
+                    ".table.table-striped.table-condensed"
+                ).select("tr > td:nth-child(1)")
+            ]
+        )
+        return departments
+
+    return {"ug": parse_departments(UG_SUBJ), "gr": parse_departments(GR_SUBJ)}
 
 
 def get_courses(deps):
