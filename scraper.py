@@ -1,22 +1,22 @@
+from os import makedirs, listdir
+from datetime import datetime, date
+
+import requests
+import pandas as pd
 from tqdm.contrib.concurrent import process_map
 from pickle import dump, load
-import requests
 from bs4 import BeautifulSoup
-import pandas as pd
-from datetime import datetime, date
-import os
-
-import boto3
+from boto3 import Session
 
 
 TERM = "w_22_2370"
-UG_SUBJ = "https://www.lsa.umich.edu/cg/cg_subjectlist.aspx?termArray={}&cgtype=ug&allsections=true".format(
-    TERM
-)
-GR_SUBJ = "https://www.lsa.umich.edu/cg/cg_subjectlist.aspx?termArray={}&cgtype=gr&allsections=true".format(
-    TERM
-)
-
+UG_SUBJ = f"https://www.lsa.umich.edu/cg/cg_subjectlist.aspx?termArray={TERM}&cgtype=ug&allsections=true"
+GR_SUBJ = f"https://www.lsa.umich.edu/cg/cg_subjectlist.aspx?termArray={TERM}&cgtype=gr&allsections=true"
+EXTRA_ARGS = {
+    "ContentType": "application/csv",
+    "ACL": "public-read",
+    "CacheControl": "max-age=3600",
+}
 
 def slugify(text):
     return "-".join(text.lower().split())
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     all_sections = get_all_sections(filtered.items())
     df = pd.DataFrame(all_sections)
 
-    session = boto3.Session(profile_name="cg-scraper")
+    session = Session(profile_name="cg-scraper")
     s3 = session.client("s3")
 
     try:
@@ -189,11 +189,7 @@ if __name__ == "__main__":
         "./course_data.csv",
         bucket,
         key,
-        ExtraArgs={
-            "ContentType": "application/csv",
-            "ACL": "public-read",
-            "CacheControl": "max-age=3600",
-        },
+        ExtraArgs=EXTRA_ARGS,
     )
 
     hourly_counts = (
@@ -237,13 +233,9 @@ if __name__ == "__main__":
         "./overview.csv",
         bucket,
         "course_data/overview.csv",
-        ExtraArgs={
-            "ContentType": "application/csv",
-            "ACL": "public-read",
-            "CacheControl": "max-age=3600",
-        },
+        ExtraArgs=EXTRA_ARGS,
     )
-    os.makedirs("./output/", exist_ok=True)
+    makedirs("./output/", exist_ok=True)
     for (course, listing) in df.groupby("Course").groups.items():
         df.loc[
             listing,
@@ -258,14 +250,10 @@ if __name__ == "__main__":
             ],
         ].to_csv(f"./output/{slugify(course)}.csv")
 
-    for file in os.listdir("./output/"):
+    for file in listdir("./output/"):
         s3.upload_file(
             f"./output/{file}",
             bucket,
             f"course_data/course/{file}",
-            ExtraArgs={
-                "ContentType": "application/csv",
-                "ACL": "public-read",
-                "CacheControl": "max-age=3600",
-            },
+            ExtraArgs=EXTRA_ARGS,
         )
