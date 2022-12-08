@@ -6,7 +6,7 @@ beautifulsoup4==4.10.0
 bleach==4.1.0
 boto3==1.20.5
 botocore==1.23.5
-certifi==2021.10.8
+certifi==2022.12.7
 cffi==1.15.0
 charset-normalizer==2.0.7
 debugpy==1.5.1
